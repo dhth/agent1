@@ -100,7 +100,7 @@ mod tests {
     #[test]
     fn output_of_a_failing_command_is_returned() {
         // GIVEN
-        let cmd = "ls nonexistent/directory";
+        let cmd = r#"echo "something went wrong" >&2; false"#;
 
         // WHEN
         let result = run_cmd(cmd).expect("result should've been a success");
@@ -112,7 +112,7 @@ mod tests {
         ----- stdout -----
 
         ----- stderr -----
-        ls: nonexistent/directory: No such file or directory
+        something went wrong
         ")
     }
 
