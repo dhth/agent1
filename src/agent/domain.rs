@@ -73,6 +73,7 @@ pub(super) enum FunctionDeclarationName {
     ReadFile,
     ListFiles,
     EditFile,
+    RunCmd,
 }
 
 impl Display for FunctionDeclarationName {
@@ -81,6 +82,7 @@ impl Display for FunctionDeclarationName {
             FunctionDeclarationName::ReadFile => "read_file",
             FunctionDeclarationName::ListFiles => "list_files",
             FunctionDeclarationName::EditFile => "edit_file",
+            FunctionDeclarationName::RunCmd => "run_command",
         };
 
         write!(f, "{content}")
@@ -118,6 +120,12 @@ pub(super) struct EditFileToolArgs {
     pub(super) old_str: String,
     #[schemars(description = "The string to replace the old string with")]
     pub(super) new_str: String,
+}
+
+#[derive(Debug, JsonSchema, Deserialize)]
+pub(super) struct RunCmdArgs {
+    #[schemars(description = "Command to run")]
+    pub(super) cmd: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
