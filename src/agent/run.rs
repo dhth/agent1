@@ -117,13 +117,18 @@ pub fn run(client: Client) -> anyhow::Result<()> {
         };
 
         if !resp.status().is_success() {
-            if let Ok(resp_body) = resp.text() {
-                debug!("response: {}", &resp_body);
+            let code = resp.status().as_u16();
+            match resp.text() {
+                Ok(t) => debug!("non success response (code: {code}): {}", &t),
+                Err(e) => debug!("non success response (code: {code}), couldn't get text: {e}",),
             }
-            anyhow::bail!("gemini API returned a non success code");
+            anyhow::bail!("gemini API returned a non success code: {code}");
         }
 
-        let resp_body = resp.text().context("couldn't get response text")?;
+        let resp_body = resp
+            .text()
+            .inspect_err(|e| debug!("couldn't get response text: {e}"))
+            .context("couldn't get response text")?;
         debug!("response: {}", &resp_body);
 
         let resp = match serde_json::from_str::<GenerateContentResponse>(&resp_body) {
