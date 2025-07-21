@@ -1,5 +1,5 @@
 use super::domain::*;
-use crate::tools::{edit_file, list_files, read_file};
+use crate::tools::{edit_file, list_files, read_file, run_cmd};
 use anyhow::Context;
 use schemars::schema_for;
 use serde_json::Value;
@@ -58,7 +58,26 @@ If the file specified with path doesn't exist, it will be created."#.to_string()
         }],
     );
 
-    vec![read_file_tool, list_files_tool, edit_file_tool]
+    let run_command_tool_schema = schema_for!(RunCmdArgs);
+    let mut run_command_tool_schema_value: Value = run_command_tool_schema.to_value();
+
+    if let Value::Object(ref mut obj) = run_command_tool_schema_value {
+        obj.remove("$schema");
+        obj.remove("title");
+    }
+
+    let run_cmd_tool = Tool::FunctionDeclarations(vec![FunctionDeclaration {
+        name: FunctionDeclarationName::RunCmd,
+        description: "Run a shell command via bash. Will return the combined stdout and stderr of the command.".to_string(),
+        parameters: run_command_tool_schema_value,
+    }]);
+
+    vec![
+        read_file_tool,
+        list_files_tool,
+        edit_file_tool,
+        run_cmd_tool,
+    ]
 }
 
 pub(super) fn execute_function_call(
@@ -110,6 +129,21 @@ pub(super) fn execute_function_call(
             let args: EditFileToolArgs =
                 serde_json::from_value(args.clone()).context("invalid arguments provided")?;
             match edit_file(&args.path, &args.old_str, &args.new_str) {
+                Ok(r) => FunctionCallResponse::Output(r),
+                Err(e) => FunctionCallResponse::Error(e.to_string()),
+            }
+        }
+        FunctionDeclarationName::RunCmd => {
+            let args = match &function_call.args {
+                Some(a) => a,
+                None => {
+                    return Err(anyhow::anyhow!("empty args provided"));
+                }
+            };
+
+            let args: RunCmdArgs =
+                serde_json::from_value(args.clone()).context("invalid arguments provided")?;
+            match run_cmd(&args.cmd) {
                 Ok(r) => FunctionCallResponse::Output(r),
                 Err(e) => FunctionCallResponse::Error(e.to_string()),
             }
