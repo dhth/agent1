@@ -5,6 +5,7 @@ use colored::Colorize;
 use reqwest::blocking::Client;
 use std::env::VarError;
 use std::io::Write;
+use tracing::debug;
 
 const SYSTEM_PROMPT: &str = include_str!("assets/system-prompt.txt");
 
@@ -92,6 +93,12 @@ pub fn run(client: Client) -> anyhow::Result<()> {
             });
         }
 
+        if let Ok(r) = serde_json::to_string_pretty(&body) {
+            debug!("request: {}", &r);
+        } else {
+            debug!("request: {:?}", &body);
+        }
+
         let resp = client.post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent")
         .json(&body)
         .header("content-type", "application/json")
@@ -109,11 +116,22 @@ pub fn run(client: Client) -> anyhow::Result<()> {
             }
         };
 
-        let resp = resp
-            .error_for_status()
-            .context("gemini API returned an error")?;
+        if !resp.status().is_success() {
+            let code = resp.status().as_u16();
+            match resp.text() {
+                Ok(t) => debug!("non success response (code: {code}): {}", &t),
+                Err(e) => debug!("non success response (code: {code}), couldn't get text: {e}",),
+            }
+            anyhow::bail!("gemini API returned a non success code: {code}");
+        }
 
-        let resp = match resp.json::<GenerateContentResponse>() {
+        let resp_body = resp
+            .text()
+            .inspect_err(|e| debug!("couldn't get response text: {e}"))
+            .context("couldn't get response text")?;
+        debug!("response: {}", &resp_body);
+
+        let resp = match serde_json::from_str::<GenerateContentResponse>(&resp_body) {
             Ok(r) => r,
             Err(e) => {
                 println!(
