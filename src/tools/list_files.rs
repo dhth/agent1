@@ -11,10 +11,10 @@ pub fn list_files(path: &str) -> anyhow::Result<Vec<String>> {
         match result {
             Ok(entry) => {
                 // TODO: handle this error
-                if let Ok(m) = entry.metadata() {
-                    if m.is_file() {
-                        files.push(entry.path().to_string_lossy().to_string());
-                    }
+                if let Ok(m) = entry.metadata()
+                    && m.is_file()
+                {
+                    files.push(entry.path().to_string_lossy().to_string());
                 }
             }
             Err(e) => {
